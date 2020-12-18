@@ -1,0 +1,23 @@
+let GetData = (URL as text, genApiKey as text) =>
+    let
+        pageSize = 5000,
+        sendRequest = (page) =>
+            let
+                Response = Web.Contents(URL & "?limit=" & Number.ToText(pageSize) & "&format=json&offset=" & Number.ToText(page * pageSize), [Headers=[#"Gen-Api-Key"= genApiKey]]),
+                Data = Json.Document(Response)[data]
+            in
+                Data,
+        Loop = (page as number, AccumData as list) =>
+            let
+                Data = Function.InvokeAfter(()=>sendRequest(page), #duration(0,0,0,2)),         
+                Result =      
+                    if List.Count(Data) < pageSize 
+                    or page >= 200
+                    then Table.FromRecords(List.Combine({AccumData, Data}))
+                    else @Loop(page + 1, List.Combine({AccumData, Data})) 
+            in
+                Result
+        in
+            Loop(0, {})
+in 
+    GetData
